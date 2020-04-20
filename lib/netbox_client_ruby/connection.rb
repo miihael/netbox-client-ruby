@@ -6,7 +6,8 @@ require 'netbox_client_ruby/error/local_error'
 module NetboxClientRuby
   class Connection
     DEFAULT_OPTIONS = {
-      request_encoding: :json
+      request_encoding: :json,
+      retry_opts: { max: 3, interval: 0.3, max_interval: 2, backoff_factor: 2 },
     }.freeze
 
     def self.new(options = {})
@@ -29,10 +30,11 @@ module NetboxClientRuby
       NetboxClientRuby.config.netbox
     end
 
-    private_class_method def self.build_faraday(request_encoding: :json)
+    private_class_method def self.build_faraday(request_encoding: :json, retry_opts: nil)
       config = NetboxClientRuby.config
       Faraday.new(url: config.netbox.api_base_url, headers: headers) do |faraday|
         faraday.request request_encoding
+        faraday.request :retry, retry_opts if retry_opts
         faraday.response config.faraday.logger if config.faraday.logger
         faraday.response :json, content_type: /\bjson$/
         faraday.options.merge NetboxClientRuby.config.faraday.request_options
